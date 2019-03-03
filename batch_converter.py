@@ -30,6 +30,9 @@ import warnings
 
 import tqdm
 
+EXIT_OK = 0
+EXIT_ERROR = 1
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -43,11 +46,9 @@ def convert(input_file, output_file):
     return subprocess.run(['convert', input_file, output_file], check=True)
 
 
-if __name__ == '__main__':
-    args_ = parse_args()
-
-    glob_pattern = getattr(args_, 'glob-pattern')
-    output_format = getattr(args_, 'output-format')
+def run(args):
+    glob_pattern = getattr(args, 'glob-pattern')
+    output_format = getattr(args, 'output-format')
 
     future_args = []
     for file_path in glob.glob(glob_pattern):
@@ -65,12 +66,20 @@ if __name__ == '__main__':
             for future in tqdm.tqdm(queue, desc='Converting {0} files:'.format(len(queue)), unit='files', leave=False):
                 input_file, output_file = queue[future]
                 try:
-                    data = future.result()
+                    future.result()
                     if not os.path.isfile(output_file):
                         conversion_failures.append(input_file)
-                except Exception as ex:
+                except:
                     conversion_failures.append(input_file)
 
     if conversion_failures:
         conversion_failures.sort()
         print('Failed to process the following files:', (',' + os.linesep).join(conversion_failures), file=sys.stderr)
+        return EXIT_ERROR
+    return EXIT_OK
+
+
+if __name__ == '__main__':
+    args_ = parse_args()
+    status_code_ = run(args_)
+    sys.exit(status_code_)
